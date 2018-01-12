@@ -1,0 +1,122 @@
+<?php
+/**
+ * @file
+ * MS CRM Integration
+ */
+
+
+  use AlexaCRM\CRMToolkit\Client as OrganizationService;
+  use AlexaCRM\CRMToolkit\Settings;
+
+
+
+/**
+ * Implements hook_form_alter()
+ *
+ */
+function ms_crm_form_alter(&$form, &$form_state) {
+  if ($form['#form_id'] == 'webform_client_form_6') {
+    $form['#submit'][] = 'mscrm_form_submit';
+  }
+}
+
+/**
+ * Form submit()
+ *
+ */
+function mscrm_form_submit($form, &$form_state) {
+
+    $leadData = [];
+
+    $leadData['emailaddress1']            = $form_state['values']['submitted'][2];
+    $leadData['salutation']               = $form_state['values']['submitted'][15];
+    $leadData['firstname']                = $form_state['values']['submitted'][13];
+    $leadData['lastname']                 = $form_state['values']['submitted'][14];
+    $leadData['companyname']              = $form_state['values']['submitted'][4];
+    $leadData['telephone1']               = $form_state['values']['submitted'][3];
+    $leadData['address1_line1']           = $form_state['values']['submitted'][7];
+    $leadData['address1_city']            = $form_state['values']['submitted'][8];
+    $leadData['address1_stateorprovince'] = $form_state['values']['submitted'][9];
+    $leadData['address1_postalcode']      = $form_state['values']['submitted'][10];
+    $leadData['address1_country']         = $form_state['values']['submitted'][17];
+    $leadData['industrycode']             = $form_state['values']['submitted'][16];
+    $leadData['subject']                  = $form_state['values']['submitted'][11];
+    $leadData['new_webemailmessage']      = $form_state['values']['submitted'][5];
+
+
+    $options = [
+        'serverUrl' => 'SERVER',
+        'username' => 'USER',
+        'password' => 'PASS',
+        'authMode' => 'AUTH',
+    ];
+
+
+  try {
+    $serviceSettings = new Settings( $options );
+    $service = new OrganizationService( $serviceSettings );
+
+    $lead = $service->entity( 'lead' );
+
+    foreach ($leadData as $key => $value) {
+      $lead->{$key} = $value;
+    }
+
+    $lead->owneridname            = 'OWNER';
+    $lead->leadsourcecode         = 'Web';
+    $lead->new_leadorigin         = 'Contact us form';
+    $lead->new_leadclassification = 'Lead';
+    $lead->statecode              = 'Open';
+    $lead->new_datelead           = date('m/d/Y');
+
+    $leadId = $lead->create();
+
+  } catch (Exception $e) {
+     foreach ($leadData as $key => $value) {
+      $leadError[$key] = $value;
+    }
+    // dpm($leadError);
+
+    $body = "<h3>Webform Submitted Data</h3><br />";
+    $body .= date('m/d/Y') . "<br /><br /><ul>";
+    foreach ($leadError as $key => $value) {
+      $body .= '<li>' . $key . ': <strong>' . $value . "</strong></li>";
+    }
+    $body .= '</ul>';
+
+    $params = array(
+      'subject' => 'Contact Us Webform/CRM Error',
+      'body' =>  $body,
+    );
+    drupal_mail('ms_crm', 'ms_crm_error', "EMAIL", language_default(), $params);
+  }
+
+}
+
+
+
+/**
+ * Implementation of hook_mail().
+ */
+function ms_crm_mail($key, &$message, $params){
+  $headers = array(
+    'MIME-Version' => '1.0',
+    'Content-Type' => 'text/html; charset=UTF-8; format=flowed',
+    'Content-Transfer-Encoding' => '8Bit',
+    'X-Mailer' => 'Drupal'
+  );
+
+  foreach ($headers as $key => $value) {
+    $message['headers'][$key] = $value;
+  }
+
+  $message['subject'] = $params['subject'];
+  $message['body'][] = $params['body'];
+
+  switch ($key) {
+    case "ms_crm_error":
+      // Make other changes here if desired...
+      break;
+  }
+
+}

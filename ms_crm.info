@@ -1,0 +1,7 @@
+; $Id$
+name = MS CRM Integration
+description = MS CRM Integration
+package = Straight North
+core = 7.x
+
+

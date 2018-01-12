@@ -1,0 +1,5 @@
+{
+    "require": {
+        "alexacrm/php-crm-toolkit": "20171115"
+    }
+}
